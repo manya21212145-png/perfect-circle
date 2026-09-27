@@ -2,6 +2,19 @@
   "name": "perfect-circle",
   "private": true,
   "version": "0.1.0",
+  "description": "Perfect Circle — draw a shape freehand around a dot and get an accuracy score. Runs on your own computer; phones join over Wi-Fi.",
+  "license": "MIT",
+  "author": "Manya Bansal",
+  "keywords": [
+    "game",
+    "drawing",
+    "canvas",
+    "pwa",
+    "socket.io",
+    "sqlite",
+    "typescript",
+    "vite"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -43,8 +56,12 @@
     "socket.io": "^4.8.4",
     "socket.io-client": "^4.8.4"
   },
-  "description": "Perfect Circle v0 — draw a shape around the dot and get an accuracy score. Runs on your own PC.",
   "engines": {
     "node": ">=22.12"
+  },
+  "allowScripts": {
+    "better-sqlite3@13.0.3": true,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true
   }
 }

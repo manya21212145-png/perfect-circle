@@ -1,3 +1,9 @@
+# Dependencies and build output
+node_modules
+dist
+dist-ssr
+*.local
+
 # Logs
 logs
 *.log
@@ -7,12 +13,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Player data: the SQLite database and its temporary files (never commit!)
+data/*.db
+data/*.db-*
+data/*.sqlite*
 
-# Editor directories and files
+# HTTPS certificates made with mkcert (contain a private key)
+certs/
+
+# Test output
+coverage
+test-results
+playwright-report
+
+# Editor and OS files
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -23,12 +37,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# SQLite database (created on first run)
-data/*.db
-coverage
-
-# test output
-test-results
-playwright-report
-data/e2e.db*
-certs
+# Local environment files
+.env
+.env.*

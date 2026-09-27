@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Perfect Circle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  /* Whiteboard (light) by default, chalkboard in dark mode */
+  :root {
+    --board: #F6F6F1;
+    --ink: #1F2A44;
+    --muted: #7A8194;
+    --good: #169B62;
+    --mid: #D99A00;
+    --bad: #D6453D;
+    --button: #1F2A44;
+    --button-ink: #F6F6F1;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --board: #26352C;
+      --ink: #F1EEE4;
+      --muted: #9DB0A3;
+      --good: #8FE0B0;
+      --mid: #F4D35E;
+      --bad: #F28B82;
+      --button: #F1EEE4;
+      --button-ink: #26352C;
+    }
+  }
+  :root[data-theme="dark"] {
+    --board: #26352C;
+    --ink: #F1EEE4;
+    --muted: #9DB0A3;
+    --good: #8FE0B0;
+    --mid: #F4D35E;
+    --bad: #F28B82;
+    --button: #F1EEE4;
+    --button-ink: #26352C;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    height: 100%;
+    margin: 0;
+    background: var(--board);
+    color: var(--ink);
+    font-family: "Patrick Hand", "Comic Sans MS", "Segoe Print", cursive, system-ui, sans-serif;
+    overflow: hidden;
+    overscroll-behavior: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  canvas {
+    position: fixed;
+    inset: 0;
+    touch-action: none;
+    cursor: crosshair;
+  }
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 18px) 22px 0;
+    pointer-events: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  h1 {
+    margin: 0;
+    font-family: "Caveat Brush", "Patrick Hand", cursive;
+    font-weight: 400;
+    font-size: 1.9rem;
+    line-height: 1;
+  }
+  #best { font-size: 1.15rem; color: var(--muted); }
+
+  #readout {
+    position: fixed;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    width: min(90vw, 360px);
+  }
+  #score {
+    font-family: "Caveat Brush", "Patrick Hand", cursive;
+    font-size: clamp(3.2rem, 14vw, 5rem);
+    line-height: 1;
+    min-height: 1em;
+    margin-bottom: 2.2rem; /* leaves room for the dot */
+  }
+  #note {
+    font-size: 1.3rem;
+    line-height: 1.3;
+    min-height: 1.3em;
+    color: var(--ink);
+  }
+  #note.dim { color: var(--muted); }
+
+  footer {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    padding: 0 22px calc(env(safe-area-inset-bottom, 0px) + 22px);
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+  button {
+    pointer-events: auto;
+    font: inherit;
+    font-size: 1.2rem;
+    padding: 10px 22px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--button);
+    color: var(--button-ink);
+    cursor: pointer;
+  }
+  button:focus-visible { outline: 3px solid var(--mid); outline-offset: 3px; }
+  button[hidden] { display: none; }
+</style>
+</head>
+<body>
+  <canvas id="board" aria-label="Drawing area. Draw a circle around the dot."></canvas>
+
+  <header>
+    <h1>Perfect circle</h1>
+    <div id="best"></div>
+  </header>
+
+  <div id="readout" aria-live="polite">
+    <div id="score"></div>
+    <div id="note" class="dim">Draw a circle around the dot</div>
+  </div>
+
+  <footer>
+    <button id="share" hidden>Share score</button>
+  </footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- Tuning ----
+  const MIN_RADIUS = 45;        // px: closer than this to the dot is not allowed
+  const TIME_LIMIT = 10000;     // ms
+  const CLOSE_ENOUGH = 0.93;    // fraction of a full turn needed when you lift your finger
+  const BACKTRACK_LIMIT = 0.45; // radians you may go backwards before it counts as "wrong way"
+  const STRICTNESS = 2.5;       // higher = harsher scoring
+
+  const canvas = document.getElementById("board");
+  const ctx = canvas.getContext("2d");
+  const scoreEl = document.getElementById("score");
+  const noteEl = document.getElementById("note");
+  const bestEl = document.getElementById("best");
+  const shareBtn = document.getElementById("share");
+
+  let W = 0, H = 0, cx = 0, cy = 0;
+  let pts = [];            // {x, y, r}
+  let drawing = false;
+  let finished = false;
+  let failed = false;
+  let totalAngle = 0;      // signed, unwrapped angle travelled around the dot
+  let maxProgress = 0;
+  let lastAngle = null;
+  let startTime = 0;
+  let lastScore = null;
+
+  // ---- Best score (per device) ----
+  let best = null;
+  try {
+    const saved = localStorage.getItem("perfect-circle-best");
+    if (saved !== null && !isNaN(parseFloat(saved))) best = parseFloat(saved);
+  } catch (e) { /* storage unavailable */ }
+  function showBest() {
+    bestEl.textContent = best === null ? "" : "Best " + best.toFixed(1) + "%";
+  }
+  showBest();
+
+  // ---- Colors from CSS tokens ----
+  function readColor(name) {
+    const hex = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+    if (!m) return [128, 128, 128];
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  let C = {};
+  function loadColors() {
+    C = {
+      ink: readColor("--ink"), muted: readColor("--muted"),
+      good: readColor("--good"), mid: readColor("--mid"), bad: readColor("--bad")
+    };
+  }
+  const rgb = (c, a) => "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + (a === undefined ? 1 : a) + ")";
+  function mix(a, b, t) { return [0, 1, 2].map(i => Math.round(a[i] + (b[i] - a[i]) * t)); }
+  // error 0 -> good, 0.06 -> mid, 0.12+ -> bad
+  function errorColor(err) {
+    const t = Math.min(1, err / 0.12);
+    return t < 0.5 ? mix(C.good, C.mid, t * 2) : mix(C.mid, C.bad, (t - 0.5) * 2);
+  }
+
+  // ---- Canvas sizing ----
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cx = W / 2; cy = H / 2;
+    if (drawing) { drawing = false; reset(); }
+    render();
+  }
+
+  // ---- Scoring ----
+  function averageRadius() {
+    let s = 0;
+    for (const p of pts) s += p.r;
+    return s / pts.length;
+  }
+  function computeScore() {
+    const rAvg = averageRadius();
+    let dev = 0;
+    for (const p of pts) dev += Math.abs(p.r - rAvg);
+    dev = dev / pts.length / rAvg;          // average deviation as a fraction of the radius
+    return Math.max(0, Math.min(100, 100 * (1 - dev * STRICTNESS)));
+  }
+
+  // ---- Drawing ----
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+
+    // ideal circle, shown after a valid attempt
+    if (finished && !failed && pts.length > 2) {
+      ctx.save();
+      ctx.setLineDash([6, 10]);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = rgb(C.muted, 0.7);
+      ctx.beginPath();
+      ctx.arc(cx, cy, averageRadius(), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // the player's line, each segment colored by how far it strays
+    if (pts.length > 1) {
+      const rAvg = averageRadius();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 6;
+      for (let i = 1; i < pts.length; i++) {
+        const p = pts[i], q = pts[i - 1];
+        const err = Math.abs(p.r - rAvg) / rAvg;
+        ctx.strokeStyle = failed ? rgb(C.muted, 0.8) : rgb(errorColor(err));
+        ctx.beginPath();
+        ctx.moveTo(q.x, q.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
+    }
+
+    // the dot
+    ctx.fillStyle = rgb(C.ink);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function setNote(text, dim) {
+    noteEl.textContent = text;
+    noteEl.classList.toggle("dim", !!dim);
+  }
+
+  function reset() {
+    pts = [];
+    totalAngle = 0; maxProgress = 0; lastAngle = null;
+    finished = false; failed = false; lastScore = null;
+    scoreEl.textContent = "";
+    shareBtn.hidden = true;
+  }
+
+  function fail(message) {
+    drawing = false;
+    finished = true;
+    failed = true;
+    scoreEl.textContent = "";
+    setNote(message + ". Try again.");
+    render();
+  }
+
+  function verdict(s) {
+    if (s >= 97) return "Basically a compass";
+    if (s >= 93) return "Nearly perfect";
+    if (s >= 88) return "Excellent";
+    if (s >= 80) return "Pretty round";
+    if (s >= 65) return "Wobbly, but it's a circle";
+    return "That's more of a potato";
+  }
+
+  function finish() {
+    drawing = false;
+    if (finished) return;
+    if (pts.length < 10 || Math.abs(totalAngle) < Math.PI * 2 * CLOSE_ENOUGH) {
+      fail("Close the circle");
+      return;
+    }
+    finished = true;
+    const s = computeScore();
+    lastScore = s;
+    scoreEl.textContent = s.toFixed(1) + "%";
+    if (best === null || s > best) {
+      best = s;
+      try { localStorage.setItem("perfect-circle-best", String(best)); } catch (e) {}
+      showBest();
+      setNote(verdict(s) + ". New best!");
+    } else {
+      setNote(verdict(s));
+    }
+    shareBtn.hidden = false;
+    render();
+  }
+
+  function addPoint(x, y) {
+    const dx = x - cx, dy = y - cy;
+    const r = Math.hypot(dx, dy);
+
+    const prev = pts[pts.length - 1];
+    if (prev && Math.hypot(x - prev.x, y - prev.y) < 2) return; // ignore jitter
+
+    if (r < MIN_RADIUS) { pts.push({ x, y, r }); fail("Too close to the dot"); return; }
+    if (performance.now() - startTime > TIME_LIMIT) { fail("Too slow"); return; }
+
+    const a = Math.atan2(dy, dx);
+    if (lastAngle !== null) {
+      let d = a - lastAngle;
+      if (d > Math.PI) d -= Math.PI * 2;
+      if (d < -Math.PI) d += Math.PI * 2;
+      totalAngle += d;
+      maxProgress = Math.max(maxProgress, Math.abs(totalAngle));
+      if (maxProgress - Math.abs(totalAngle) > BACKTRACK_LIMIT) {
+        pts.push({ x, y, r });
+        fail("Wrong way. Keep going in one direction");
+        return;
+      }
+    }
+    lastAngle = a;
+    pts.push({ x, y, r });
+
+    // live score while drawing
+    if (pts.length > 8 && Math.abs(totalAngle) > 0.6) {
+      scoreEl.textContent = computeScore().toFixed(1) + "%";
+    }
+
+    // a full turn completes the circle automatically
+    if (Math.abs(totalAngle) >= Math.PI * 2) finish();
+  }
+
+  // ---- Input ----
+  canvas.addEventListener("pointerdown", (e) => {
+    if (e.button > 0) return;
+    e.preventDefault();
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    reset();
+    drawing = true;
+    startTime = performance.now();
+    setNote("", true);
+    addPoint(e.clientX, e.clientY);
+    render();
+  });
+
+  canvas.addEventListener("pointermove", (e) => {
+    if (!drawing) return;
+    e.preventDefault();
+    const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    for (const ev of (events.length ? events : [e])) {
+      if (!drawing) break;
+      addPoint(ev.clientX, ev.clientY);
+    }
+    render();
+  });
+
+  const end = () => { if (drawing) finish(); };
+  canvas.addEventListener("pointerup", end);
+  canvas.addEventListener("pointercancel", end);
+
+  // ---- Share ----
+  shareBtn.addEventListener("click", async () => {
+    if (lastScore === null) return;
+    const text = "I drew a " + lastScore.toFixed(1) + "% perfect circle. Can you beat it?";
+    try {
+      if (navigator.share) { await navigator.share({ text: text, url: location.href }); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    try {
+      await navigator.clipboard.writeText(text + " " + location.href);
+      shareBtn.textContent = "Copied";
+      setTimeout(() => { shareBtn.textContent = "Share score"; }, 1600);
+    } catch (e) {
+      shareBtn.hidden = true;
+    }
+  });
+
+  // ---- Theme + resize ----
+  loadColors();
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const onTheme = () => { loadColors(); render(); };
+  if (mq.addEventListener) mq.addEventListener("change", onTheme);
+  window.addEventListener("resize", resize);
+  resize();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+})();
+</script>
+</body>
+</html>
