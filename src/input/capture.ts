@@ -29,39 +29,40 @@ export function capture(minGap = MIN_GAP_PX): Capture {
 }
 
 export interface PointerHandlers {
-  onStart(p: Point): void;
-  onMove(p: Point): void;
-  onEnd(): void;
+  onStart(p: Point, pointerId: number): void;
+  onMove(p: Point, pointerId: number): void;
+  onEnd(pointerId: number): void;
 }
 
 /**
  * Listens for pointer events on an element (one code path for mouse, touch and pen).
+ * multi = false: only the first finger draws. multi = true: every finger is reported
+ * (used by split-screen duels). Point times are page times (performance.now()).
  * Returns a function that removes the listeners again.
  */
-export function attachPointer(el: HTMLElement, h: PointerHandlers): () => void {
-  let active: number | null = null; // id of the finger/mouse currently drawing
+export function attachPointer(el: HTMLElement, h: PointerHandlers, multi = false): () => void {
+  const active = new Set<number>(); // fingers/mouse currently drawing
   const toPoint = (e: PointerEvent): Point => ({ x: e.clientX, y: e.clientY, t: e.timeStamp });
 
   const down = (e: PointerEvent) => {
-    if (e.button > 0 || active !== null) return; // left button / first finger only
+    if (e.button > 0 || (!multi && active.size > 0)) return; // left button / first finger only
     e.preventDefault();
-    active = e.pointerId;
+    active.add(e.pointerId);
     try { el.setPointerCapture(e.pointerId); } catch { /* not supported */ }
-    h.onStart(toPoint(e));
+    h.onStart(toPoint(e), e.pointerId);
   };
 
   const move = (e: PointerEvent) => {
-    if (e.pointerId !== active) return;
+    if (!active.has(e.pointerId)) return;
     e.preventDefault();
     // Browsers group fast movements; getCoalescedEvents gives every in-between point.
     const events = e.getCoalescedEvents?.() ?? [];
-    for (const ev of events.length ? events : [e]) h.onMove(toPoint(ev));
+    for (const ev of events.length ? events : [e]) h.onMove(toPoint(ev), e.pointerId);
   };
 
   const up = (e: PointerEvent) => {
-    if (e.pointerId !== active) return;
-    active = null;
-    h.onEnd();
+    if (!active.delete(e.pointerId)) return;
+    h.onEnd(e.pointerId);
   };
 
   el.addEventListener('pointerdown', down);

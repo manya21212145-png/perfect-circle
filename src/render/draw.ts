@@ -1,6 +1,9 @@
-// Canvas drawing: the dot, the player's stroke and the dashed ideal shape.
+// Canvas drawing: the dot, the player's stroke, the dashed ideal shape and the timer ring.
 
 import type { Point } from '../scoring/types';
+import type { Ideal } from '../scoring';
+
+type XY = { x: number; y: number };
 
 /** Makes the canvas fill the window and stay sharp on high-resolution screens. */
 export function fitCanvas(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
@@ -22,14 +25,23 @@ export function drawDot(ctx: CanvasRenderingContext2D, x: number, y: number, col
   ctx.fill();
 }
 
-/** The dashed "perfect" circle shown on the result. Other shapes come in step 5. */
-export function drawIdeal(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, colour: string) {
+/**
+ * Draws the ideal shape. The ideal's numbers are measured from the dot, so
+ * (cx, cy) moves it to where the dot is on screen.
+ */
+export function drawIdeal(ctx: CanvasRenderingContext2D, ideal: Ideal, cx: number, cy: number, colour: string, dashed = true, width = 2) {
   ctx.save();
-  ctx.setLineDash([6, 10]);
-  ctx.lineWidth = 2;
+  if (dashed) ctx.setLineDash([6, 10]);
+  ctx.lineWidth = width;
+  ctx.lineJoin = 'round';
   ctx.strokeStyle = colour;
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
+  if (ideal.kind === 'circle') {
+    ctx.arc(cx, cy, ideal.r, 0, Math.PI * 2);
+  } else {
+    ideal.points.forEach((p: XY, i) => (i === 0 ? ctx.moveTo(cx + p.x, cy + p.y) : ctx.lineTo(cx + p.x, cy + p.y)));
+    ctx.closePath();
+  }
   ctx.stroke();
   ctx.restore();
 }
@@ -38,17 +50,40 @@ export function drawIdeal(ctx: CanvasRenderingContext2D, x: number, y: number, r
 export function drawStroke(
   ctx: CanvasRenderingContext2D,
   points: Point[],
-  colourAt: (i: number) => string,
+  colourAt: (i: number) => string | null, // null = skip this segment (fully faded ink)
   width = 6,
+  dx = 0,
+  dy = 0,
 ) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.lineWidth = width;
   for (let i = 1; i < points.length; i++) {
-    ctx.strokeStyle = colourAt(i);
+    const colour = colourAt(i);
+    if (colour === null) continue;
+    ctx.strokeStyle = colour;
     ctx.beginPath();
-    ctx.moveTo(points[i - 1].x, points[i - 1].y);
-    ctx.lineTo(points[i].x, points[i].y);
+    ctx.moveTo(points[i - 1].x + dx, points[i - 1].y + dy);
+    ctx.lineTo(points[i].x + dx, points[i].y + dy);
     ctx.stroke();
   }
+}
+
+/** Timer ring around the dot: `fraction` = time left (1 = full, 0 = none). */
+export function drawRing(ctx: CanvasRenderingContext2D, x: number, y: number, fraction: number, colour: string, track: string) {
+  const r = 24;
+  ctx.save();
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = track;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  if (fraction > 0) {
+    ctx.strokeStyle = colour;
+    ctx.beginPath();
+    ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + fraction * Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
 }

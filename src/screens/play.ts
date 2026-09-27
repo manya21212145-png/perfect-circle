@@ -1,179 +1,148 @@
-// The Play screen: joins input -> validate -> score -> render into one game loop.
-// For now it is the classic circle game from perfect-circle.html. Shapes, modes and
-// the Setup screen come in steps 5 and 6.
+// Play and Result screens (solo play and the daily challenge).
+// Route: #/play?shape=star&mode=timed&limit=3&off=1      (solo)
+//        #/play?daily=1                                  (today's daily challenge)
 
-import { attachPointer, capture } from '../input/capture';
-import { resample } from '../input/resample';
-import { meanRadius, pointErrors, scoreCircle } from '../scoring/circle';
-import type { Point } from '../scoring/types';
-import { turnInfo, validate, type RejectReason } from '../scoring/validate';
-import { errorColour, readPalette, rgba, type Palette } from '../render/colours';
-import { drawDot, drawIdeal, drawStroke, fitCanvas } from '../render/draw';
+import { Board, Stage } from './board';
+import { h, navButton, REASONS, shapeIcon, shareOrCopy, toast, verdict, type Screen } from './ui';
+import { SHAPES, SHAPE_NAMES, type Shape } from '../scoring/templates';
+import { MODES, modeName, type Mode, type PlaySettings } from '../modes';
+import { TIME_LIMITS_S, type TimeLimit } from '../modes/timed';
+import { shareText } from '../daily/share';
+import { playSound } from '../render/sound';
+import type { Badge } from '../progression/badges';
+import {
+  bestFor, getDaily, getSettings, postDaily, recordAttempt, saveSettings, setDaily, streak, todaysChallenge,
+} from '../state';
 
-// Messages from the Functional Design's "Validation rules" table.
-const MESSAGES: Record<RejectReason, string> = {
-  too_close: 'Too close to the dot. Try again.',
-  wrong_way: 'Wrong way. Keep going in one direction.',
-  not_closed: 'Close the shape. Try again.',
-  too_slow: 'Too slow. Try again.',
-  too_short: 'Draw a bigger shape.',
-};
-
-const BEST_KEY = 'perfect-circle-best'; // moves to IndexedDB in step 7
-
-function verdict(s: number): string {
-  if (s >= 97) return 'Basically a compass';
-  if (s >= 93) return 'Nearly perfect';
-  if (s >= 88) return 'Excellent';
-  if (s >= 80) return 'Pretty round';
-  if (s >= 65) return "Wobbly, but it's a circle";
-  return "That's more of a potato";
+let stage: Stage | null = null;
+export function getStage(): Stage {
+  stage ??= new Stage(document.getElementById('board') as HTMLCanvasElement);
+  return stage;
 }
 
-export function startPlay(): void {
-  const canvas = document.getElementById('board') as HTMLCanvasElement;
-  const ctx = canvas.getContext('2d')!;
-  const scoreEl = document.getElementById('score')!;
-  const noteEl = document.getElementById('note')!;
-  const bestEl = document.getElementById('best')!;
-  const shareBtn = document.getElementById('share') as HTMLButtonElement;
+/** Reads shape/mode/limit/off-hand from the address, falling back to the last used. */
+export function settingsFromParams(params: URLSearchParams): PlaySettings {
+  const s = getSettings();
+  const shape = (SHAPES as string[]).includes(params.get('shape') ?? '') ? params.get('shape') as Shape : s.last.shape;
+  const mode = (MODES as string[]).includes(params.get('mode') ?? '') ? params.get('mode') as Mode : s.last.mode;
+  const limit = Number(params.get('limit'));
+  const limitS = (TIME_LIMITS_S as readonly number[]).includes(limit) ? limit as TimeLimit : s.last.limitS ?? 5;
+  const offHand = params.has('off') ? params.get('off') === '1' : s.offHandDefault;
+  return { shape, mode, limitS, offHand };
+}
 
-  const cap = capture();
-  let phase: 'idle' | 'drawing' | 'done' | 'failed' = 'idle';
-  let width = 0;
-  let height = 0;
-  let centre = { cx: 0, cy: 0 };
-  let palette: Palette = readPalette();
-  let lastScore: number | null = null;
+/** A pop-up card for each new badge. */
+export function showBadges(badges: Badge[]) {
+  badges.forEach((b, i) => setTimeout(() => {
+    const card = h('div', { class: 'badge-pop', role: 'status' },
+      h('div', { class: 'badge-medal', 'aria-hidden': 'true' }, '★'),
+      h('div', {}, h('strong', {}, 'New badge: ' + b.name), h('div', { class: 'muted' }, b.how)));
+    document.body.append(card);
+    setTimeout(() => card.remove(), 4000);
+  }, i * 1200));
+}
 
-  // ---- best score on this device ----
-  let best: number | null = null;
-  try {
-    const saved = localStorage.getItem(BEST_KEY);
-    if (saved !== null && !isNaN(parseFloat(saved))) best = parseFloat(saved);
-  } catch { /* storage not available */ }
-  const showBest = () => { bestEl.textContent = best === null ? '' : `Best ${best.toFixed(1)}%`; };
-  showBest();
+export const playScreen: Screen = (root, params) => {
+  const challenge = params.get('daily') === '1' ? todaysChallenge() : null;
+  const settings: PlaySettings = challenge
+    ? { shape: challenge.shape, mode: challenge.mode, limitS: challenge.limitS, offHand: getSettings().offHandDefault }
+    : settingsFromParams(params);
+  if (!challenge) saveSettings({ last: { shape: settings.shape, mode: settings.mode, limitS: settings.limitS } });
 
-  const setNote = (text: string, dim = false) => {
-    noteEl.textContent = text;
-    noteEl.classList.toggle('dim', dim);
+  const hint = `Draw a ${SHAPE_NAMES[settings.shape].toLowerCase()} around the dot`;
+  const title = challenge ? `Daily #${challenge.number}` : SHAPE_NAMES[settings.shape];
+  const bestEl = h('span', { class: 'best' });
+  const tag = h('p', { class: 'mode-tag' },
+    modeName(settings), settings.offHand ? ' · Other hand' : '');
+  const scoreEl = h('div', { class: 'score', 'aria-live': 'off' });
+  const noteEl = h('div', { class: 'note dim', 'aria-live': 'polite' }, hint);
+  const sheet = h('section', { class: 'sheet', hidden: true, 'aria-label': 'Result' });
+
+  root.append(
+    h('header', { class: 'topbar overlay' },
+      h('a', { class: 'btn ghost back', href: challenge ? '#/daily' : '#/setup', 'aria-label': 'Back' }, '←'),
+      h('div', { class: 'title-block' }, h('h1', {}, shapeIcon(settings.shape), ' ', title), tag),
+      bestEl),
+    h('div', { class: 'readout' }, scoreEl, noteEl),
+    sheet,
+  );
+
+  const showBest = async () => {
+    const b = await bestFor(settings.shape);
+    bestEl.textContent = b === null ? '' : `Best ${b.toFixed(1)}%`;
+  };
+  void showBest();
+
+  const board = new Board(settings);
+  let dailyDone = false;
+  if (challenge) void getDaily(challenge.date).then((d) => { dailyDone = !!d; if (d) tag.append(' · Practice'); });
+
+  board.onStartDrawing = () => {
+    sheet.hidden = true;
+    noteEl.textContent = '';
+    scoreEl.textContent = '';
+  };
+  board.onLive = (s) => { scoreEl.textContent = s === null ? '' : s.toFixed(1) + '%'; };
+
+  board.onFinish = async (r) => {
+    const sound = getSettings().sound;
+    if (!r.ok) {
+      playSound('bad', sound);
+      scoreEl.textContent = '';
+      noteEl.textContent = REASONS[r.reason];
+      noteEl.classList.remove('dim');
+      showSheet(null);
+      return;
+    }
+    playSound('good', sound);
+    scoreEl.textContent = r.score.toFixed(1) + '%';
+    noteEl.textContent = verdict(r.score);
+    noteEl.classList.remove('dim');
+
+    const countsAsDaily = !!challenge && !dailyDone;
+    const saved = await recordAttempt(settings, r.score, countsAsDaily ? challenge!.date : null);
+    if (countsAsDaily) {
+      dailyDone = true;
+      await setDaily({ date: challenge!.date, score: r.score, errors: r.errors, stroke: r.stroke128 });
+      void postDaily(challenge!.date);
+    }
+    if (saved.best && !challenge) noteEl.textContent += '. New best!';
+    void showBest();
+    showBadges(saved.newBadges);
+    showSheet(r.score, countsAsDaily ? r.errors : null);
   };
 
-  // ---- drawing the screen ----
-  function render() {
-    ctx.clearRect(0, 0, width, height);
-    const pts = cap.points;
+  function showSheet(score: number | null, dailyErrors: number[] | null = null) {
+    const retry = h('button', { class: 'btn', type: 'button', onclick: () => {
+      board.reset();
+      sheet.hidden = true;
+      scoreEl.textContent = '';
+      noteEl.textContent = hint;
+      noteEl.classList.add('dim');
+    } }, score === null ? 'Retry' : challenge ? 'Practice' : 'Retry');
 
-    if (phase === 'done') {
-      drawIdeal(ctx, centre.cx, centre.cy, meanRadius(resample(pts), centre), rgba(palette.muted, 0.7));
+    const buttons: Node[] = [retry];
+    if (score !== null) {
+      buttons.push(h('button', { class: 'btn secondary', type: 'button', onclick: async () => {
+        let text: string;
+        if (challenge && dailyErrors) {
+          const st = await streak();
+          text = shareText({ ...challenge, score, errors: dailyErrors, streak: st.shown });
+        } else {
+          text = `I drew a ${score.toFixed(1)}% ${SHAPE_NAMES[settings.shape].toLowerCase()} (${modeName(settings).toLowerCase()}) in Perfect Circle. Can you beat it?`;
+        }
+        const how = await shareOrCopy(text);
+        if (how === 'copied') toast('Copied — paste it anywhere');
+      } }, 'Share'));
     }
-    if (pts.length > 1) {
-      const errors = pointErrors(pts, centre);
-      drawStroke(ctx, pts, (i) =>
-        phase === 'failed' ? rgba(palette.muted, 0.8) : rgba(errorColour(errors[i], palette)));
-    }
-    drawDot(ctx, centre.cx, centre.cy, rgba(palette.ink));
+    buttons.push(challenge ? navButton('Daily', '#/daily', 'btn secondary') : navButton('Change mode', '#/setup', 'btn secondary'));
+    buttons.push(navButton('Home', '#/home', 'btn ghost'));
+    sheet.replaceChildren(h('div', { class: 'sheet-buttons' }, ...buttons));
+    sheet.hidden = false;
   }
 
-  // ---- game steps ----
-  function reset() {
-    cap.clear();
-    phase = 'idle';
-    lastScore = null;
-    scoreEl.textContent = '';
-    shareBtn.hidden = true;
-  }
-
-  function fail(reason: RejectReason) {
-    phase = 'failed';
-    scoreEl.textContent = '';
-    setNote(MESSAGES[reason]);
-    render();
-  }
-
-  function finish() {
-    if (phase !== 'drawing') return;
-    const check = validate(cap.points, centre); // all rules, including "too short" and "not closed"
-    if (!check.ok) { fail(check.reason); return; }
-
-    phase = 'done';
-    const s = scoreCircle(resample(cap.points), centre);
-    lastScore = s;
-    scoreEl.textContent = s.toFixed(1) + '%';
-    if (best === null || s > best) {
-      best = s;
-      try { localStorage.setItem(BEST_KEY, String(best)); } catch { /* ignore */ }
-      showBest();
-      setNote(verdict(s) + '. New best!');
-    } else {
-      setNote(verdict(s));
-    }
-    shareBtn.hidden = false;
-    render();
-  }
-
-  function addPoint(p: Point) {
-    if (phase !== 'drawing' || !cap.add(p)) return;
-
-    // Rules that can fail while still drawing: too close, too slow, wrong way
-    const check = validate(cap.points, { ...centre, complete: false });
-    if (!check.ok) { fail(check.reason); return; }
-
-    const { turned } = turnInfo(cap.points, centre);
-    if (cap.points.length > 8 && turned > 0.6) {
-      scoreEl.textContent = scoreCircle(resample(cap.points), centre).toFixed(1) + '%'; // live score
-    }
-    if (turned >= Math.PI * 2) finish(); // a full turn ends the attempt automatically
-  }
-
-  attachPointer(canvas, {
-    onStart(p) {
-      reset();
-      phase = 'drawing';
-      setNote('', true);
-      addPoint(p);
-      render();
-    },
-    onMove(p) {
-      addPoint(p);
-      render();
-    },
-    onEnd() {
-      finish();
-    },
-  });
-
-  // ---- share button ----
-  shareBtn.addEventListener('click', async () => {
-    if (lastScore === null) return;
-    const text = `I drew a ${lastScore.toFixed(1)}% perfect circle. Can you beat it?`;
-    try {
-      if (navigator.share) { await navigator.share({ text, url: location.href }); return; }
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') return;
-    }
-    try {
-      await navigator.clipboard.writeText(text + ' ' + location.href);
-      shareBtn.textContent = 'Copied';
-      setTimeout(() => { shareBtn.textContent = 'Share score'; }, 1600);
-    } catch {
-      shareBtn.hidden = true;
-    }
-  });
-
-  // ---- window size and theme ----
-  function resize() {
-    ({ width, height } = fitCanvas(canvas, ctx));
-    centre = { cx: width / 2, cy: height / 2 };
-    if (phase === 'drawing') reset(); // the dot moved, so the stroke no longer counts
-    render();
-  }
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    palette = readPalette();
-    render();
-  });
-  window.addEventListener('resize', resize);
-  resize();
-  document.fonts?.ready.then(render);
-}
+  const st = getStage();
+  st.start([board]);
+  board.reset();
+  return () => st.stop();
+};

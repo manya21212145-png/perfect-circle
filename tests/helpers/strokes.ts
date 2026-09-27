@@ -1,7 +1,9 @@
 // Test stroke generators (Unit Test Document, "Strategy"): perfect circle, noisy
-// circle, ellipse and scribbles, with a fixed random seed so results never change.
+// circle, ellipse, square, star and scribbles, with a fixed random seed so results never change.
 
 import type { Point, Stroke } from '../../src/scoring/types';
+import { template } from '../../src/scoring/templates';
+import { resample } from '../../src/input/resample';
 
 /** A tiny seeded random number generator (mulberry32). Same seed = same numbers. */
 export function seededRandom(seed: number): () => number {
@@ -74,4 +76,27 @@ export function makeBacktrack(o: { cx: number; cy: number; r: number; before: nu
   for (let a = o.before - o.back; a < o.total; a += stepSize) angles.push(a);
   angles.push(o.total);
   return angles.map((a, i) => ({ x: o.cx + o.r * Math.cos(a), y: o.cy + o.r * Math.sin(a), t: i * 5 }));
+}
+
+/**
+ * Points evenly spread along the outline of an ideal square, triangle or star.
+ * `skip` lists corner (vertex) indices to cut across instead of visiting.
+ */
+export function makePolygon(o: {
+  shape: 'square' | 'triangle' | 'star'; cx: number; cy: number; size: number;
+  rotationDeg?: number; points?: number; skip?: number[]; durationMs?: number;
+}): Stroke {
+  const verts = template(o.shape).vertices
+    .map((v, i) => ({ v, i }))
+    .filter(({ i }) => !(o.skip ?? []).includes(i))
+    .map(({ v }) => v);
+  const a = ((o.rotationDeg ?? 0) * Math.PI) / 180;
+  const pts = verts.map((v) => ({
+    x: o.cx + o.size * (v.x * Math.cos(a) - v.y * Math.sin(a)),
+    y: o.cy + o.size * (v.x * Math.sin(a) + v.y * Math.cos(a)),
+    t: 0,
+  }));
+  pts.push({ ...pts[0] }); // close the shape
+  pts.forEach((p, i) => { p.t = (i / (pts.length - 1)) * (o.durationMs ?? 2000); });
+  return resample(pts, o.points ?? 128);
 }
