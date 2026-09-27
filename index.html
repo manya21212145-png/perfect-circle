@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Perfect Circle</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Patrick+Hand&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <canvas id="board" aria-label="Drawing area. Draw a circle around the dot."></canvas>
+
+    <header>
+      <h1>Perfect circle</h1>
+      <div id="best"></div>
+    </header>
+
+    <div id="readout" aria-live="polite">
+      <div id="score"></div>
+      <div id="note" class="dim">Draw a circle around the dot</div>
+    </div>
+
+    <footer>
+      <button id="share" hidden>Share score</button>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

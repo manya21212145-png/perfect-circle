@@ -1,0 +1,120 @@
+/* Whiteboard (light) by default, chalkboard in dark mode.
+   Copied from perfect-circle.html. render/colours.ts reads these colour tokens. */
+:root {
+  --board: #F6F6F1;
+  --ink: #1F2A44;
+  --muted: #7A8194;
+  --good: #169B62;
+  --mid: #D99A00;
+  --bad: #D6453D;
+  --button: #1F2A44;
+  --button-ink: #F6F6F1;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --board: #26352C;
+    --ink: #F1EEE4;
+    --muted: #9DB0A3;
+    --good: #8FE0B0;
+    --mid: #F4D35E;
+    --bad: #F28B82;
+    --button: #F1EEE4;
+    --button-ink: #26352C;
+  }
+}
+:root[data-theme="dark"] {
+  --board: #26352C;
+  --ink: #F1EEE4;
+  --muted: #9DB0A3;
+  --good: #8FE0B0;
+  --mid: #F4D35E;
+  --bad: #F28B82;
+  --button: #F1EEE4;
+  --button-ink: #26352C;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--board);
+  color: var(--ink);
+  font-family: "Patrick Hand", "Comic Sans MS", "Segoe Print", cursive, system-ui, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+canvas {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+  cursor: crosshair;
+}
+header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 22px 0;
+  pointer-events: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+h1 {
+  margin: 0;
+  font-family: "Caveat Brush", "Patrick Hand", cursive;
+  font-weight: 400;
+  font-size: 1.9rem;
+  line-height: 1;
+}
+#best { font-size: 1.15rem; color: var(--muted); }
+
+#readout {
+  position: fixed;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  width: min(90vw, 360px);
+}
+#score {
+  font-family: "Caveat Brush", "Patrick Hand", cursive;
+  font-size: clamp(3.2rem, 14vw, 5rem);
+  line-height: 1;
+  min-height: 1em;
+  margin-bottom: 2.2rem; /* leaves room for the dot */
+}
+#note {
+  font-size: 1.3rem;
+  line-height: 1.3;
+  min-height: 1.3em;
+  color: var(--ink);
+}
+#note.dim { color: var(--muted); }
+
+footer {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 0 22px calc(env(safe-area-inset-bottom, 0px) + 22px);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+button {
+  pointer-events: auto;
+  font: inherit;
+  font-size: 1.2rem;
+  padding: 10px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--button);
+  color: var(--button-ink);
+  cursor: pointer;
+}
+button:focus-visible { outline: 3px solid var(--mid); outline-offset: 3px; }
+button[hidden] { display: none; }
