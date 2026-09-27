@@ -1,6 +1,7 @@
 // Daily: challenge number, shape and mode; one scored attempt; then result, share and leaderboard.
 
 import { h, navButton, shapeIcon, shareOrCopy, toast, topBar, type Screen } from './ui';
+import { HAS_SERVER } from '../config';
 import { SHAPE_NAMES } from '../scoring/templates';
 import { modeName } from '../modes';
 import { shareText, segmentErrors, squareFor } from '../daily/share';
@@ -46,6 +47,7 @@ export const dailyScreen: Screen = (root) => {
     }
 
     // Leaderboard (needs the PC server)
+    if (!HAS_SERVER) { board.remove(); return; }
     board.append(h('h2', {}, 'Top 100 today'));
     try {
       const { rows } = await api.leaderboard(c.date);

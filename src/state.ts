@@ -1,6 +1,7 @@
 // App-wide state: settings, today's date, login, and saving results.
 
 import { api } from './data/api';
+import { HAS_SERVER } from './config';
 import { allAttempts, kvGet, kvSet, newId, saveAttempt, type Attempt } from './data/indexeddb';
 import { pullAttempts, syncPending } from './data/sync';
 import { dailyChallenge } from './daily/seed';
@@ -72,6 +73,7 @@ const changed = () => listeners.forEach((fn) => fn());
 
 /** Called once at start: finds the server, the logged-in player and test mode. */
 export async function connect() {
+  if (!HAS_SERVER) { serverReachable = false; changed(); return; } // public website: no PC server
   nickname = (await kvGet<string>('nickname')) ?? null;
   try {
     testMode = (await api.config()).testMode;

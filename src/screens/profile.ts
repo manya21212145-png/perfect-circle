@@ -1,6 +1,7 @@
 // Profile: streak, badges, history graph with filters, sign in with nickname + PIN.
 
 import { h, toast, topBar, type Screen } from './ui';
+import { HAS_SERVER } from '../config';
 import { SHAPES, SHAPE_NAMES } from '../scoring/templates';
 import { MODES, modeName } from '../modes';
 import { BADGES } from '../progression/badges';
@@ -54,6 +55,10 @@ export const profileScreen: Screen = (root) => {
         h('div', { class: 'row' },
           h('button', { class: 'btn secondary', type: 'button', onclick: async () => { toast(await syncNow()); await load(); } }, 'Sync now'),
           h('button', { class: 'btn ghost', type: 'button', onclick: async () => { await logout(); } }, 'Sign out')));
+      return;
+    }
+    if (!HAS_SERVER) {
+      account.remove();
       return;
     }
     if (!s.serverReachable) {

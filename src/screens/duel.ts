@@ -4,6 +4,7 @@
 
 import type { Socket } from 'socket.io-client';
 import { h, navButton, REASONS, shapeIcon, toast, topBar, type Screen } from './ui';
+import { HAS_SERVER } from '../config';
 import { Board } from './board';
 import { getStage, showBadges } from './play';
 import { SHAPE_NAMES } from '../scoring/templates';
@@ -237,6 +238,13 @@ export const duelScreen: Screen = (root, params) => {
 
   // ---------- start ----------
   const fromLink = params.path[1]?.toUpperCase();
+  if (!HAS_SERVER) {
+    panel.replaceChildren(
+      h('p', {}, 'Online duels need the Perfect Circle server on your Wi-Fi.'),
+      h('p', { class: 'muted' }, 'On this website you can still duel a friend on one device:'),
+      navButton('Split-screen duel', '#/split', 'btn big'));
+    return () => { getStage().stop(); };
+  }
   if (fromLink && isRoomCode(fromLink) && myName()) {
     panel.replaceChildren(h('p', {}, `Joining room ${fromLink}…`));
     void connect().then((s) => s.emit('join', { code: fromLink, nickname: myName() }, (r: JoinReply) => {

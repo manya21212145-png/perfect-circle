@@ -1,6 +1,7 @@
 // Home: today's daily challenge card, current streak, and the main buttons.
 
 import { go, h, navButton, shapeIcon, type Screen } from './ui';
+import { HAS_SERVER } from '../config';
 import { SHAPE_NAMES } from '../scoring/templates';
 import { modeName } from '../modes';
 import { getDaily, onSessionChange, session, streak, todaysChallenge } from '../state';
@@ -24,7 +25,7 @@ export const homeScreen: Screen = (root) => {
       streakEl,
       h('nav', { class: 'menu', 'aria-label': 'Main menu' },
         navButton('Play', '#/setup', 'btn big'),
-        navButton('Duel a friend', '#/duel', 'btn secondary big'),
+        HAS_SERVER ? navButton('Duel a friend', '#/duel', 'btn secondary big') : '',
         navButton('Split-screen duel', '#/split', 'btn secondary big'),
         h('div', { class: 'row' },
           navButton('Profile', '#/profile', 'btn ghost'),
@@ -42,7 +43,8 @@ export const homeScreen: Screen = (root) => {
     const s = session();
     who.textContent = s.nickname
       ? `Signed in as ${s.nickname}`
-      : s.serverReachable ? 'Playing as a guest — progress is saved on this device' : 'Offline — progress is saved on this device';
+      : s.serverReachable ? 'Playing as a guest — progress is saved on this device'
+      : HAS_SERVER ? 'Offline — progress is saved on this device' : 'Your progress is saved on this device';
   };
   showWho();
   const off = onSessionChange(showWho);

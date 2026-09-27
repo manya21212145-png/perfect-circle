@@ -14,6 +14,11 @@ No cloud, no accounts elsewhere, no cost.
 |---|---|---|
 | <img src="docs/screenshots/home-phone.png" width="220" alt="Home screen with the daily challenge card and menu"> | <img src="docs/screenshots/result-star-phone.png" width="220" alt="A star drawn at 100% with the ideal star overlaid"> | <img src="docs/screenshots/result-circle-dark.png" width="400" alt="A wobbly circle scored 91.8%, coloured green to yellow"> |
 
+### ▶ Play online
+**https://manya21212145-png.github.io/perfect-circle/**. Open it on any phone, tablet or laptop; no install needed (you can add it to your home screen).
+The online version is the solo game: all shapes and modes, the daily challenge, split-screen duels, streaks and badges, saved on your own device.
+Sign-in, online duels on two devices and the leaderboard need the [server on your own computer](#quick-start).
+
 ---
 
 ## Contents

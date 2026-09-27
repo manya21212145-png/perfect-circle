@@ -2,7 +2,12 @@
 import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// The web address the game lives under. '/' on your PC; '/perfect-circle/' on GitHub Pages
+// (the Pages workflow sets BASE_PATH).
+const base = process.env.BASE_PATH ?? '/';
+
 export default defineConfig({
+  base,
   server: {
     host: true, // also listen on your Wi-Fi address
     // While developing (npm run dev), send API and duel traffic to the PC server on port 3000
@@ -24,7 +29,9 @@ export default defineConfig({
         background_color: '#F6F6F1',
         display: 'standalone',
         orientation: 'any',
-        start_url: '/',
+        start_url: base,
+        scope: base,
+        id: base,
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
@@ -33,7 +40,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2}'],
-        navigateFallback: '/index.html',
+        navigateFallback: base + 'index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/socket\.io\//], // never cache server data
       },
     }),

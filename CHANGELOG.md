@@ -5,9 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- Public website on GitHub Pages (`.github/workflows/pages.yml`): the solo version of the game at `https://<username>.github.io/perfect-circle/`, rebuilt on every push to `main`. It has no PC server, so sign-in, online duels and the leaderboard are hidden, and progress is saved on each player's device (`src/config.ts`, `VITE_NO_SERVER=1`).
+- `BASE_PATH` build setting so the game can live under a sub-folder of a website.
+
 ### Changed
 - Navigation items (Play, Duel, Back, the daily card…) are now real buttons instead of links, so every menu behaves the same way with the keyboard.
 - The keyboard test (BT-28) runs on laptop browsers only: phones have no Tab key, and Safari moves between buttons with **Option+Tab** (or with Tab once *Safari → Settings → Advanced → Press Tab to highlight each item* is on).
+- CI uses the Node 24 versions of the GitHub actions and runs on Ubuntu 24.04.
 
 ### Fixed
 - Playwright's HTML report now goes to `playwright-report/`, so it no longer clashes with `test-results/`.
