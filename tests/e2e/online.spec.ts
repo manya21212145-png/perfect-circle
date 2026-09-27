@@ -49,7 +49,7 @@ test('BT-15, BT-16 daily twice: second try is practice; share text has number, s
   await expect(page.locator('.big-score')).toHaveText(/%$/);
   const first = await page.locator('.big-score').innerText();
 
-  await page.getByRole('link', { name: 'Practice (not counted)' }).click();
+  await page.getByRole('button', { name: 'Practice (not counted)' }).click();
   await expect(page.locator('.mode-tag')).toContainText('Practice');
   await settle(page);
   await drawShape(page, 'circle');

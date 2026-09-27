@@ -3,7 +3,7 @@
 //        #/play?daily=1                                  (today's daily challenge)
 
 import { Board, Stage } from './board';
-import { h, navButton, REASONS, shapeIcon, shareOrCopy, toast, verdict, type Screen } from './ui';
+import { backButton, h, navButton, REASONS, shapeIcon, shareOrCopy, toast, verdict, type Screen } from './ui';
 import { SHAPES, SHAPE_NAMES, type Shape } from '../scoring/templates';
 import { MODES, modeName, type Mode, type PlaySettings } from '../modes';
 import { TIME_LIMITS_S, type TimeLimit } from '../modes/timed';
@@ -60,7 +60,7 @@ export const playScreen: Screen = (root, params) => {
 
   root.append(
     h('header', { class: 'topbar overlay' },
-      h('a', { class: 'btn ghost back', href: challenge ? '#/daily' : '#/setup', 'aria-label': 'Back' }, '←'),
+      backButton(challenge ? '#/daily' : '#/setup'),
       h('div', { class: 'title-block' }, h('h1', {}, shapeIcon(settings.shape), ' ', title), tag),
       bestEl),
     h('div', { class: 'readout' }, scoreEl, noteEl),

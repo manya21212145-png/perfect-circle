@@ -2,7 +2,7 @@
 // On a touch screen both draw at once; with one mouse they take turns on the same shape.
 // Best of 3 rounds.
 
-import { h, navButton, REASONS, type Screen } from './ui';
+import { backButton, h, navButton, REASONS, type Screen } from './ui';
 import { Board, type BoardResult } from './board';
 import { getStage } from './play';
 import { SHAPES, SHAPE_NAMES } from '../scoring/templates';
@@ -50,7 +50,7 @@ export const splitScreen: Screen = (root) => {
 
   root.append(
     h('header', { class: 'topbar overlay' },
-      h('a', { class: 'btn ghost back', href: '#/home', 'aria-label': 'Back' }, '←'),
+      backButton('#/home'),
       h('h1', {}, 'Split-screen duel'),
       modeBtn),
     ...labels, big, sheet);

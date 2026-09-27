@@ -20,14 +20,21 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = 
   return el;
 }
 
-/** Link-style button that goes to another screen. */
+/**
+ * A button that goes to another screen. It is a real <button> (not a link) because
+ * Safari's Tab key skips links by default, and every menu must work with the keyboard.
+ */
 export const navButton = (label: string, to: string, cls = 'btn') =>
-  h('a', { class: cls, href: to }, label);
+  h('button', { class: cls, type: 'button', onclick: () => go(to) }, label);
+
+/** The ← button at the top left of a screen. */
+export const backButton = (to: string) =>
+  h('button', { class: 'btn ghost back', type: 'button', 'aria-label': 'Back', onclick: () => go(to) }, '←');
 
 /** Top bar with a back button and a title. */
 export function topBar(title: string, back = '#/home', extra?: Node) {
   return h('header', { class: 'topbar' },
-    h('a', { class: 'btn ghost back', href: back, 'aria-label': 'Back' }, '←'),
+    backButton(back),
     h('h1', {}, title),
     extra ?? h('span'));
 }

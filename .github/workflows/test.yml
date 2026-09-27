@@ -19,4 +19,6 @@ jobs:
         if: failure()
         with:
           name: playwright-report
-          path: test-results/
+          path: |
+            test-results/
+            playwright-report/

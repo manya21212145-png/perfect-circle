@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- Navigation items (Play, Duel, Back, the daily card…) are now real buttons instead of links, so every menu behaves the same way with the keyboard.
+- The keyboard test (BT-28) runs on laptop browsers only: phones have no Tab key, and Safari moves between buttons with **Option+Tab** (or with Tab once *Safari → Settings → Advanced → Press Tab to highlight each item* is on).
+
+### Fixed
+- Playwright's HTML report now goes to `playwright-report/`, so it no longer clashes with `test-results/`.
+
 ## [0.1.0] – 2026-09-27
 
 First working release (v0), built from the Technical Design's 17 "Build and run on your PC" steps.

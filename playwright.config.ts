@@ -18,7 +18,7 @@ export default defineConfig({
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'test-results/e2e-report' }]],
+  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   use: {
     baseURL: 'http://localhost:3100',
     trace: 'retain-on-failure',

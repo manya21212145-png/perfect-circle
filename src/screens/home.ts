@@ -1,13 +1,13 @@
 // Home: today's daily challenge card, current streak, and the main buttons.
 
-import { h, navButton, shapeIcon, type Screen } from './ui';
+import { go, h, navButton, shapeIcon, type Screen } from './ui';
 import { SHAPE_NAMES } from '../scoring/templates';
 import { modeName } from '../modes';
 import { getDaily, onSessionChange, session, streak, todaysChallenge } from '../state';
 
 export const homeScreen: Screen = (root) => {
   const c = todaysChallenge();
-  const dailyStatus = h('p', { class: 'muted' }, 'One scored attempt today');
+  const dailyStatus = h('span', { class: 'muted' }, 'One scored attempt today');
   const streakEl = h('p', { class: 'streak' });
   const who = h('p', { class: 'muted small' });
 
@@ -15,11 +15,11 @@ export const homeScreen: Screen = (root) => {
     h('main', { class: 'page' },
       h('h1', { class: 'logo' }, 'Perfect Circle'),
       h('p', { class: 'muted' }, 'Draw a shape around the dot. How close can you get?'),
-      h('a', { class: 'card daily-card', href: '#/daily' },
-        h('div', { class: 'card-icon' }, shapeIcon(c.shape)),
-        h('div', {},
-          h('h2', {}, `Daily challenge #${c.number}`),
-          h('p', {}, `${SHAPE_NAMES[c.shape]} · ${modeName(c)}`),
+      h('button', { class: 'card daily-card', type: 'button', onclick: () => go('#/daily') },
+        h('span', { class: 'card-icon' }, shapeIcon(c.shape)),
+        h('span', { class: 'card-text' },
+          h('strong', { class: 'card-title' }, `Daily challenge #${c.number}`),
+          h('span', {}, `${SHAPE_NAMES[c.shape]} · ${modeName(c)}`),
           dailyStatus)),
       streakEl,
       h('nav', { class: 'menu', 'aria-label': 'Main menu' },

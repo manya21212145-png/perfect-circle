@@ -9,7 +9,7 @@ const note = (page: import('@playwright/test').Page) => page.locator('.readout .
 test('BT-01 new player opens the link and draws a circle: score within 1 s, no sign-up', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Perfect Circle' })).toBeVisible();
-  await page.getByRole('link', { name: 'Play' }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.getByRole('button', { name: 'Start' }).click();
   await settle(page);
   await drawShape(page, 'circle');
@@ -112,6 +112,7 @@ test('BT-18 first 90%+ score shows the Sharp eye badge pop-up once', async ({ pa
 });
 
 test('BT-19 Profile after 20 attempts: graph shows attempts; shape and mode filters work', async ({ page }) => {
+  test.setTimeout(120_000); // 20 drawings take a while on slower machines
   for (const shape of ['circle', 'square'] as const) {
     await page.goto(`/#/play?shape=${shape}&mode=classic&off=0`);
     await settle(page);
@@ -140,7 +141,10 @@ test('BT-27 dark mode: screens use the chalkboard theme', async ({ browser }) =>
   await ctx.close();
 });
 
-test('BT-28 menus work with the keyboard only (Tab and Enter)', async ({ page }) => {
+test('BT-28 menus work with the keyboard only (Tab and Enter)', async ({ page, isMobile }) => {
+  // BT-28 is a laptop scenario (device matrix: Windows laptop, Chrome and Edge). Phones have no Tab key,
+  // and Safari only moves between buttons with Option+Tab unless "Press Tab to highlight each item" is on.
+  test.skip(isMobile, 'Keyboard-only use is a laptop scenario');
   await page.goto('/');
   let found = false;
   for (let i = 0; i < 12 && !found; i++) {

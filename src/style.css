@@ -115,9 +115,12 @@ body:has(.screen-play), body:has(.screen-split) { overflow: hidden; overscroll-b
   text-decoration: none;
   color: inherit;
 }
-a.card:hover { border-color: var(--muted); }
+a.card:hover, button.card:hover { border-color: var(--muted); }
+button.card { font: inherit; text-align: left; cursor: pointer; width: 100%; }
+.card-text { display: flex; flex-direction: column; gap: 2px; }
+.card-title { font-family: "Caveat Brush", "Patrick Hand", cursive; font-weight: 400; font-size: 1.5rem; line-height: 1.1; }
 .daily-card { display: flex; gap: 14px; align-items: center; }
-.card-icon { flex: none; width: 56px; height: 56px; }
+.card-icon { flex: none; display: block; width: 56px; height: 56px; }
 .card-icon .shape-icon { width: 56px; height: 56px; }
 .shape-icon { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; vertical-align: -0.12em; }
 .streak { text-align: center; font-size: 1.25rem; margin: 0; }
