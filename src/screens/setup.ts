@@ -26,7 +26,7 @@ export const setupScreen: Screen = (root) => {
   const s = getSettings();
   const form = h('form', { class: 'page setup' },
     radioGroup('shape', 'Shape', SHAPES.map((x) => ({ value: x, label: [shapeIcon(x), SHAPE_NAMES[x]] })), s.last.shape),
-    radioGroup('mode', 'Mode', MODES.map((m) => ({ value: m, label: [modeName({ mode: m }).replace(/^5 s /, '')], help: MODE_HELP[m] })), s.last.mode),
+    radioGroup('mode', 'Mode', MODES.map((m) => ({ value: m, label: [m === 'timed' ? 'Time limit' : modeName({ mode: m })], help: MODE_HELP[m] })), s.last.mode),
     radioGroup('limit', 'Time limit', TIME_LIMITS_S.map((t) => ({ value: String(t), label: [`${t} seconds`] })), String(s.last.limitS ?? 5)),
     h('label', { class: 'toggle' },
       h('input', { type: 'checkbox', name: 'off', checked: s.offHandDefault }),

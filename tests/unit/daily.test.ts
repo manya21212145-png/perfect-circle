@@ -43,6 +43,11 @@ describe('daily', () => {
     const squares = text.match(/🟩|🟨|🟥/gu) ?? [];
     expect(squares).toHaveLength(5);
     expect(text).toBe('Perfect Circle #42  Star, disappearing ink\n91.8%  🟩🟩🟩🟨🟩\nStreak: 12 days');
+
+    // With the 128 per-point errors from scoring, the stroke is split into 5 equal parts
+    const perPoint = Array.from({ length: 128 }, (_, i) => (i < 103 ? 0.01 : 0.09));
+    const text2 = shareText({ number: 42, shape: 'circle', mode: 'timed', limitS: 3, score: 91.84, errors: perPoint, streak: 1 });
+    expect(text2).toBe('Perfect Circle #42  Circle, 3 s time limit\n91.8%  🟩🟩🟩🟩🟥\nStreak: 1 day');
   });
 
   it('UT-30 segment errors of 2%, 5% and 8% are green, yellow and red', () => {

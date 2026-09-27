@@ -2,7 +2,7 @@
 
 import { h, toast, topBar, type Screen } from './ui';
 import { clearAll, exportAll } from '../data/indexeddb';
-import { getSettings, isTestMode, saveSettings, today, type Settings } from '../state';
+import { getSettings, isTestMode, onSessionChange, saveSettings, today, type Settings } from '../state';
 
 export const settingsScreen: Screen = (root) => {
   const s = getSettings();
@@ -48,17 +48,21 @@ export const settingsScreen: Screen = (root) => {
       h('p', { class: 'muted small' }, 'Attempts, badges and your streak are saved on this device. If you sign in, they are also saved on the PC running the game — nowhere else.'),
       h('div', { class: 'row' }, exportBtn, reset)));
 
-  if (isTestMode()) {
+  const testTools = () => {
+    if (!isTestMode() || page.querySelector('.test-tools')) return;
     const date = h('input', { type: 'date', value: s.dateOverride ?? '' });
-    page.append(h('section', { class: 'card stack test-tools' },
+    page.insertBefore(h('section', { class: 'card stack test-tools' },
       h('h2', {}, 'Test tools (test server only)'),
       h('p', { class: 'muted small' }, 'Pretend today is another date, to test the daily challenge and streaks.'),
       h('label', {}, 'Date override ', date),
       h('div', { class: 'row' },
         h('button', { class: 'btn secondary', type: 'button', onclick: () => { saveSettings({ dateOverride: date.value || null }); toast('Today is now ' + today()); } }, 'Use this date'),
-        h('button', { class: 'btn ghost', type: 'button', onclick: () => { saveSettings({ dateOverride: null }); date.value = ''; toast('Back to the real date'); } }, 'Clear'))));
-  }
+        h('button', { class: 'btn ghost', type: 'button', onclick: () => { saveSettings({ dateOverride: null }); date.value = ''; toast('Back to the real date'); } }, 'Clear'))), page.lastElementChild);
+  };
 
   page.append(h('p', { class: 'muted small center' }, 'Perfect Circle v0.1'));
   root.append(topBar('Settings'), page);
+  testTools();
+  const off = onSessionChange(testTools); // test mode is known once the server answers
+  return () => { off(); };
 };

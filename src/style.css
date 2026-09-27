@@ -186,7 +186,7 @@ label.toggle input { width: 22px; height: 22px; min-height: 0; accent-color: var
   text-align: center; pointer-events: none;
   width: min(90vw, 380px);
 }
-.score { font-size: clamp(3rem, 13vw, 4.8rem); min-height: 1em; margin-bottom: 2.4rem; }
+.score { font-size: clamp(3rem, 13vw, 4.8rem); min-height: 1em; margin-bottom: 3.4rem; } /* room for the dot */
 .note { font-size: 1.3rem; min-height: 1.3em; }
 .note.dim { color: var(--muted); }
 .sheet {
@@ -207,6 +207,7 @@ label.toggle input { width: 22px; height: 22px; min-height: 0; accent-color: var
   background: var(--ink); color: var(--board);
   padding: 10px 18px; border-radius: 14px;
   box-shadow: 0 6px 24px rgb(0 0 0 / .2);
+  pointer-events: none;   /* never block drawing underneath */
 }
 .toast { bottom: calc(env(safe-area-inset-bottom, 0px) + 110px); }
 .banner { top: calc(env(safe-area-inset-top, 0px) + 72px); background: var(--bad); color: #fff; }

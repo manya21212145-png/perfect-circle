@@ -26,3 +26,9 @@ dist-ssr
 # SQLite database (created on first run)
 data/*.db
 coverage
+
+# test output
+test-results
+playwright-report
+data/e2e.db*
+certs

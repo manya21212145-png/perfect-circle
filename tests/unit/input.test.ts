@@ -1,7 +1,7 @@
 // UT-01 to UT-03 (input module)
 import { describe, expect, it } from 'vitest';
 import { resample } from '../../src/input/resample';
-import { capture } from '../../src/input/capture';
+import { attachPointer, capture } from '../../src/input/capture';
 import type { Point } from '../../src/scoring/types';
 import { seededRandom } from '../helpers/strokes';
 
@@ -37,5 +37,27 @@ describe('capture', () => {
     expect(c.add({ x: 100, y: 100, t: 0 })).toBe(true);
     expect(c.add({ x: 101, y: 101, t: 16 })).toBe(false); // about 1.4 px away
     expect(c.points).toHaveLength(1);
+
+    // The same rule when the points come from pointer events.
+    // A stand-in for the canvas that can fire pointer events without a browser
+    const el = new EventTarget() as unknown as HTMLElement;
+    const fire = (type: string, x: number, y: number, pointerId = 1, t = 0) => {
+      const e = Object.assign(new Event(type), { clientX: x, clientY: y, pointerId, button: 0 });
+      Object.defineProperty(e, 'timeStamp', { value: t });
+      el.dispatchEvent(e);
+    };
+    c.clear();
+    let ended = 0;
+    const detach = attachPointer(el, { onStart: (p) => c.add(p), onMove: (p) => c.add(p), onEnd: () => ended++ });
+    fire('pointerdown', 100, 100);
+    fire('pointerdown', 300, 300, 2);   // a second finger is ignored in single-pointer mode
+    fire('pointermove', 101, 101, 1, 16); // 1.4 px away: ignored
+    fire('pointermove', 110, 100, 1, 32);
+    fire('pointerup', 110, 100);
+    expect(c.points.map((p) => [p.x, p.y])).toEqual([[100, 100], [110, 100]]);
+    expect(ended).toBe(1);
+    detach();
+    fire('pointerdown', 50, 50);
+    expect(c.points).toHaveLength(2); // listeners removed
   });
 });

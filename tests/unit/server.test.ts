@@ -66,6 +66,16 @@ describe('server', () => {
 
     const wrong = await request(app).post('/api/login').send({ nickname: 'newplayer', pin: '0000' });
     expect(wrong.status).toBe(401);
+    expect((await request(app).post('/api/login').send({ nickname: 'x', pin: '1234' })).status).toBe(400);
+    expect((await request(app).post('/api/login').send({ nickname: 'okname', pin: '12' })).status).toBe(400);
+
+    // The session cookie works; nickname can be changed; logout ends the session
+    expect((await first.agent.get('/api/me')).body.nickname).toBe('newplayer');
+    await login('takenname');
+    expect((await first.agent.patch('/api/me').send({ nickname: 'takenname' })).status).toBe(409);
+    expect((await first.agent.patch('/api/me').send({ nickname: 'renamed' })).body.nickname).toBe('renamed');
+    await first.agent.post('/api/logout');
+    expect((await first.agent.get('/api/me')).status).toBe(401);
   });
 
   it('UT-48 POST /api/attempts twice with the same client_ids stores each attempt once', async () => {
@@ -77,6 +87,11 @@ describe('server', () => {
     expect((await agent.post('/api/attempts').send({ attempts })).body.stored).toBe(0);
     const list = await agent.get('/api/attempts');
     expect(list.body.attempts).toHaveLength(3);
+    expect((await agent.post('/api/attempts').send({ attempts: [{ client_id: 'bad', shape: 'hexagon' }] })).status).toBe(400);
+    expect((await request(app).post('/api/attempts').send({ attempts })).status).toBe(401); // not logged in
+
+    await agent.post('/api/badges').send({ badges: [{ badge_id: 'sharp_eye', earned_at: 1 }, { badge_id: 'made_up', earned_at: 1 }] });
+    expect((await agent.get('/api/me')).body.badges).toEqual([{ badge_id: 'sharp_eye', earned_at: 1 }]);
   });
 
   describe('duel rooms over Socket.IO', () => {
@@ -116,6 +131,18 @@ describe('server', () => {
       expect(ca.startAt).toBe(cb.startAt);
       expect(ca.shape).toBe(cb.shape);
       expect(ca.startAt - ca.serverNow).toBe(3000);
+
+      // Both send a stroke; the server scores both and both get the same round result
+      const stroke = (r: number) => ca.shape === 'circle'
+        ? makeCircle({ cx: 0, cy: 0, r, points: 128, durationMs: 1500 })
+        : makePolygon({ shape: ca.shape, cx: 0, cy: 0, size: r, durationMs: 1500 });
+      const resultA = new Promise<{ scores: { host: number; guest: number } }>((resolve) => a.once('round_result', resolve));
+      const resultB = new Promise<{ scores: { host: number; guest: number } }>((resolve) => b.once('round_result', resolve));
+      a.emit('stroke', { round: 1, stroke: stroke(160) });
+      b.emit('stroke', { round: 1, stroke: [], failed: 'too_close' });
+      const [ra, rb] = await Promise.all([resultA, resultB]);
+      expect(ra).toEqual(rb);
+      expect(ra.scores.guest).toBe(0);
     });
   });
 });

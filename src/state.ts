@@ -49,7 +49,8 @@ export function applyTheme(s = getSettings()) {
 
 // ---- dates (UTC, with the test-only override) ----
 
-let testMode = false;
+// Remembered from the last visit so dates are right from the first screen in test mode.
+let testMode = (() => { try { return localStorage.getItem('pc-test-mode') === '1'; } catch { return false; } })();
 export const isTestMode = () => testMode;
 
 export function today(): string {
@@ -74,6 +75,7 @@ export async function connect() {
   nickname = (await kvGet<string>('nickname')) ?? null;
   try {
     testMode = (await api.config()).testMode;
+    try { localStorage.setItem('pc-test-mode', testMode ? '1' : '0'); } catch { /* private mode */ }
     serverReachable = true;
     try {
       const me = await api.me();

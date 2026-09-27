@@ -23,7 +23,7 @@ export const profileScreen: Screen = (root) => {
     h('label', {}, 'Shape ', h('select', { name: 'shape' },
       h('option', { value: 'all' }, 'All shapes'), ...SHAPES.map((s) => h('option', { value: s }, SHAPE_NAMES[s])))),
     h('label', {}, 'Mode ', h('select', { name: 'mode' },
-      h('option', { value: 'all' }, 'All modes'), ...MODES.map((m) => h('option', { value: m }, modeName({ mode: m }).replace(/^5 s /, ''))))),
+      h('option', { value: 'all' }, 'All modes'), ...MODES.map((m) => h('option', { value: m }, m === 'timed' ? 'Time limit' : modeName({ mode: m }))))),
     h('label', {}, 'Days ', h('select', { name: 'days' },
       h('option', { value: '7' }, 'Last 7 days'), h('option', { value: '30', selected: true }, 'Last 30 days'),
       h('option', { value: '90' }, 'Last 90 days'), h('option', { value: '0' }, 'All time'))),
@@ -96,7 +96,7 @@ export const profileScreen: Screen = (root) => {
     const series = historySeries(attempts, f);
     const list = filterAttempts(attempts, f);
     summary.textContent = list.length
-      ? `${list.length} attempts · best ${Math.max(...list.map((a) => a.score)).toFixed(1)}% · average ${(list.reduce((s, a) => s + a.score, 0) / list.length).toFixed(1)}%`
+      ? `${list.length} attempt${list.length === 1 ? '' : 's'} · best ${Math.max(...list.map((a) => a.score)).toFixed(1)}% · average ${(list.reduce((s, a) => s + a.score, 0) / list.length).toFixed(1)}%`
       : 'No attempts match these filters yet.';
     recent.replaceChildren(...list.slice(-10).reverse().map((a) => h('li', {},
       h('span', {}, `${SHAPE_NAMES[a.shape]} · ${modeName({ mode: a.mode, limitS: (a.limit_s ?? undefined) as 5 | 3 | 2 | undefined })}`,
